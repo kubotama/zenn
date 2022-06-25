@@ -1,5 +1,5 @@
 ---
-title: "マークアップ言語のリンクを作成するVSCodeの拡張機能"
+title: "マークアップ言語のリンク作成を支援するVSCodeの拡張機能"
 emoji: "🔥"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: [VSCode]
@@ -98,7 +98,7 @@ settings.json などに設定が可能です。
 
 言語ごとにリンク形式を指定します。デフォルトでは Markdown のリンク形式が指定されています。
 
-```json
+```json:settings.json
 {
   "languageId": "markdown",
   "format": "[${title}](${url})"
@@ -109,7 +109,7 @@ languageId 属性は [Visual Studio Code language identifiers](https://code.visu
 
 たとえば以下の指定を追加すると、LaTeX ファイルで適切なリンクが作成できるようになります。
 
-```json
+```json:settings.json
 {
   "languageId": "latex",
   "format": "\\href{${url}}{${title}}"
@@ -124,7 +124,7 @@ languageId 属性は [Visual Studio Code language identifiers](https://code.visu
 - 日経クロステック
 - GitHub
 
-```json
+```json:settings.json
 {
   "url": "https://qiita.com/",
   "pattern": "(.*) - Qiita",
@@ -150,7 +150,7 @@ URL のフォーマットを指定します。デフォルトでは以下のサ�
 
 -日経クロステック
 
-```json
+```json:settings.json
 {
   "url": "(https://xtech.nikkei.com/.*)\\?.*",
   "format": "$1"
@@ -161,18 +161,40 @@ url 属性と一致する web サイトの URL 文字列のフォーマットを
 
 ## プログラムの説明
 
-1. アクティブなエディタの言語を取得します。
+### 1. コマンドを登録および設定します
 
-```typescript
+settings.json にコマンドを登録します。command 属性にプログラムから呼び出されるコマンド文字列、title 属性にコマンドパレットに表示される文字列を設定します。
+
+```json:settings.json
+{
+  "command": "must-vscode.urlToLink",
+  "title": "Must: Format Link from URL"
+}
+```
+
+コマンドが初めて実行されるタイミングで拡張機能をアクティブにするように設定します。
+
+```typescript:src/extension.ts
+export const activate = (context: vscode.ExtensionContext) => {
+  let disposable = vscode.commands.registerCommand(
+      "must-vscode.urlToLink",
+  ...
+```
+
+### 2. コマンドパレットで Must: Format Link from URL コマンドを実行すると、拡張機能がアクティブになります
+
+### 3. アクティブなエディタの言語を取得します
+
+```typescript:src/extension.ts
 import * as vscode from "vscode";
 
 const editor = vscode.window.activeTextEditor;
 const languageId = editor.document.languageId;
 ```
 
-2. 設定からリンクのフォーマットを取得します。
+### 4. 設定からリンクのフォーマットを取得します
 
-```typescript
+```typescript:src/extension.ts
 const config = vscode.workspace.getConfiguration("must-vscode");
 const linkFormats: { languageId: string; format: string }[] | undefined =
   config.get("linkFormats");
@@ -185,24 +207,28 @@ if (linkFormat) {
 }
 ```
 
-3. 選択されているテキスト(=URL)を取得します。
+### 5. 選択されているテキスト(=URL)を取得します
 
-```typescript
+```typescript:src/extension.ts
 const selection = editor.selection;
 const selectedText = editor.document.getText(selection);
 ```
 
-4. URL からタイトルを取得します。axios.get で取得した HTML コードを JSDOM に読み込ませて title 属性を取得します。
+### 6. URL からタイトルを取得します
 
-```typescript
+axios.get で取得した HTML コードを JSDOM に読み込ませて title 属性を取得します
+
+```typescript:src/link.ts
 const response = await axios.get(url);
 const dom = new JSDOM(response.data);
 const title = dom.window.document.title;
 ```
 
-5. タイトルを整形します。titleInfo は、設定から取得したタイトルのフォーマットの配列です。URL に該当するタイトルのフォーマットが見つかれば、そのフォーマットに整形します。なければ、そのままとします。
+### 7. タイトルを整形します
 
-```typescript
+titleInfo は、設定から取得したタイトルのフォーマットの配列です。URL に該当するタイトルのフォーマットが見つかれば、そのフォーマットに整形します。なければ、そのままとします。
+
+```typescript:src/link.ts
 const pattern = titleInfo.titlePatterns.find((pattern) => {
   const reUrl = new RegExp(pattern.url);
   return reUrl.test(titleInfo.url);
@@ -213,9 +239,11 @@ if (pattern) {
 }
 ```
 
-6. URL を整形します。urlPatterns は、設定から取得した URL のフォーマットの配列です。URL に該当するフォーマットが見つかれば、そのフォーマットに整形します。なければ、そのままとします。
+### 8. URL を整形します
 
-```typescript
+urlPatterns は、設定から取得した URL のフォーマットの配列です。URL に該当するフォーマットが見つかれば、そのフォーマットに整形します。なければ、そのままとします。
+
+```typescript:src/link.ts
 const urlPattern = urlPatterns.find((urlPattern) => {
   const reUrl = new RegExp(urlPattern.url);
   return reUrl.test(url);
@@ -228,13 +256,32 @@ if (urlPattern) {
 }
 ```
 
-7. 言語ごとに定義されているフォーマットでリンクを作成します。
+### 9. 言語ごとに定義されているフォーマットでリンクを作成します
 
-```typescript
+```typescript:src/link.ts
 const linkText = format
   .replace("${title}", displayTitle)
   .replace("${url}", url);
 return linkText;
 ```
 
-8. 作成したリンクで選択されているテキストを置き替えます。
+### 10. 作成したリンクで選択されているテキストを置き替えます
+
+```typescript:src/extension.ts
+const editor = vscode.window.activeTextEditor;
+  if (editor) {
+    const selection = editor.selection;
+    const selectedText = editor.document.getText(selection);
+    if (selectedText) {
+      if (text) {
+        editor.edit((editBuilder) => {
+          editBuilder.replace(selection, text);
+        });
+      }
+    }
+  }
+```
+
+## まとめ
+
+URL からリンクを作成するという単純な作業を VSCode の拡張機能に任せることができるようになりました。この記事を書くときにも、何度かリンクを作成するときに利用しています。
