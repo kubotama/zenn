@@ -1,5 +1,5 @@
 ---
-title: "マークアップ言語のリンクを作成するVSCodeの拡張機能"
+title: "マークアップ言語のリンクを作成するVSCodeの拡張機能を開発してみた"
 emoji: "🔥"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: [VSCode, Markdown]
