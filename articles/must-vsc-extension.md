@@ -86,9 +86,11 @@ $ npx vsce package
 
 ## 利用方法
 
-1. Markdown ファイル(README.md など)でリンクを作成したい URL を選択します。
+1. Markdown ファイル(README.md など)でリンクを作成したい URL の上にカーソルを移動します。
 
-1. コマンドパレットから Must: Format Link from URL コマンドを選択して、実行します。
+1. コマンドパレットから `Must: Select URL` コマンドを実行します。リンクを作成したい URL が選択されていることを確認します。URL と.(ピリオド)などが続いている場合には、あわせて選択されてしまいますので注意して下さい。
+
+1. コマンドパレットから `Must: Format Link from URL` コマンドを実行します。
 
 1. 選択されている URL がリンクに置き替えられます。
 
@@ -96,15 +98,28 @@ $ npx vsce package
 
 settings.json などに設定が可能です。
 
+- URL の正規表現
 - 言語ごとのリンク形式の指定
 - タイトル文字列のフォーマットの指定
 - URL のフォーマットの指定
 
-### 言語ごとのリンク形式の指定 (Must-vscode: Link Formats: must-vscode.linkFormats)
+### URL の正規表現 (must-vscode.urlRegex)
+
+URL を選択するときの範囲を決める正規表現を指定します。デフォルトでは以下の正規表現が指定されています。
+
+```json:package.json
+{
+  "description": "The regular expression of URL.",
+  "type": "string",
+  "default": "https?:\\/\\/[\\w\\/:%#\\$&\\?~\\.=\\+\\-]+"
+}
+```
+
+### 言語ごとのリンク形式の指定 (must-vscode.linkFormats)
 
 言語ごとにリンク形式を指定します。デフォルトでは Markdown のリンク形式が指定されています。
 
-```json:settings.json
+```json:package.json
 {
   "languageId": "markdown",
   "format": "[${title}](${url})"
@@ -115,14 +130,14 @@ languageId 属性は [Visual Studio Code language identifiers](https://code.visu
 
 たとえば以下の指定を追加すると、LaTeX ファイルで適切なリンクが作成できるようになります。
 
-```json:settings.json
+```json
 {
   "languageId": "latex",
   "format": "\\href{${url}}{${title}}"
 }
 ```
 
-### タイトル文字列のフォーマットの指定 (Must-vscode: Url Patterns: must-vscode.titlePatterns)
+### タイトル文字列のフォーマットの指定 (must-vscode.titlePatterns)
 
 タイトル文字列のフォーマットを指定します。デフォルトでは以下のサイトのタイトル文字列のフォーマットが指定されています。
 
@@ -130,7 +145,7 @@ languageId 属性は [Visual Studio Code language identifiers](https://code.visu
 - 日経クロステック
 - GitHub
 
-```json:settings.json
+```json:package.json
 {
   "url": "https://qiita.com/",
   "pattern": "(.*) - Qiita",
@@ -150,13 +165,13 @@ languageId 属性は [Visual Studio Code language identifiers](https://code.visu
 
 url 属性と一致する web サイトのタイトル文字列のフォーマットを定義します。replace メソッドを第一引数を pattern 属性、第二引数を format 属性で呼び出して、タイトル文字列を置き替えます。
 
-### URL のフォーマットの指定
+### URL のフォーマットの指定 (must-vscode.urlPatterns)
 
 URL のフォーマットを指定します。デフォルトでは以下のサイトの URL のフォーマットが指定されています。
 
 -日経クロステック
 
-```json:settings.json
+```json:package.json
 {
   "url": "(https://xtech.nikkei.com/.*)\\?.*",
   "format": "$1"
@@ -171,10 +186,23 @@ url 属性と一致する web サイトの URL 文字列のフォーマットを
 
 settings.json にコマンドを登録します。command 属性にプログラムから呼び出されるコマンド文字列、title 属性にコマンドパレットに表示される文字列を設定します。
 
-```json:settings.json
-{
-  "command": "must-vscode.urlToLink",
-  "title": "Must: Format Link from URL"
+```json:package.json
+"activationEvents": [
+  "onCommand:must-vscode.urlToLink",
+  "onCommand:must-vscode.selectUrl"
+],
+"contributes": {
+  "commands": [
+    {
+      "command": "must-vscode.urlToLink",
+      "title": "Must: Format Link from URL"
+    },
+    {
+      "command": "must-vscode.selectUrl",
+      "title": "Must: Select URL"
+    }
+  ],
+  ...
 }
 ```
 
@@ -182,14 +210,35 @@ settings.json にコマンドを登録します。command 属性にプログラ�
 
 ```typescript:src/extension.ts
 export const activate = (context: vscode.ExtensionContext) => {
-  let disposable = vscode.commands.registerCommand(
+  const linkDisposable = vscode.commands.registerCommand(
       "must-vscode.urlToLink",
+  ...
+  const selectDisposable = vscode.commands.registerCommand(
+    "must-vscode.selectUrl",
   ...
 ```
 
-### 2. コマンドパレットで Must: Format Link from URL コマンドを実行すると、拡張機能がアクティブになります
+### 2. 設定から URL の正規表現を取得します
 
-### 3. アクティブなエディタの言語を取得します
+```typescript:src/extension.ts
+const config = vscode.workspace.getConfiguration("must-vscode");
+const urlRegex: string | undefined = config.get("urlRegex");
+return urlRegex;
+```
+
+### 3. カーソルの位置にある URL の範囲を取得します
+
+```typescript:src/extension.ts
+const selected = editor.document.getWordRangeAtPosition(
+  editor.selection.active,
+  new RegExp(urlRegex)
+);
+if (selected) {
+  editor.selection = new vscode.Selection(selected.start, selected.end);
+}
+```
+
+### 4. アクティブなエディタの言語を取得します
 
 ```typescript:src/extension.ts
 import * as vscode from "vscode";
@@ -198,7 +247,7 @@ const editor = vscode.window.activeTextEditor;
 const languageId = editor.document.languageId;
 ```
 
-### 4. 設定からリンクのフォーマットを取得します
+### 5. 設定からリンクのフォーマットを取得します
 
 ```typescript:src/extension.ts
 const config = vscode.workspace.getConfiguration("must-vscode");
@@ -213,14 +262,14 @@ if (linkFormat) {
 }
 ```
 
-### 5. 選択されているテキスト(=URL)を取得します
+### 6. 選択されているテキスト(=URL)を取得します
 
 ```typescript:src/extension.ts
 const selection = editor.selection;
 const selectedText = editor.document.getText(selection);
 ```
 
-### 6. URL からタイトルを取得します
+### 7. URL からタイトルを取得します
 
 axios.get で取得した HTML コードを JSDOM に読み込ませて title 属性を取得します
 
@@ -230,7 +279,7 @@ const dom = new JSDOM(response.data);
 const title = dom.window.document.title;
 ```
 
-### 7. タイトルを整形します
+### 8. タイトルを整形します
 
 titleInfo は、設定から取得したタイトルのフォーマットの配列です。URL に該当するタイトルのフォーマットが見つかれば、そのフォーマットに整形します。なければ、そのままとします。
 
@@ -245,7 +294,7 @@ if (pattern) {
 }
 ```
 
-### 8. URL を整形します
+### 9. URL を整形します
 
 urlPatterns は、設定から取得した URL のフォーマットの配列です。URL に該当するフォーマットが見つかれば、そのフォーマットに整形します。なければ、そのままとします。
 
@@ -262,7 +311,7 @@ if (urlPattern) {
 }
 ```
 
-### 9. 言語ごとに定義されているフォーマットでリンクを作成します
+### 10. 言語ごとに定義されているフォーマットでリンクを作成します
 
 ```typescript:src/link.ts
 const linkText = format
@@ -271,7 +320,7 @@ const linkText = format
 return linkText;
 ```
 
-### 10. 作成したリンクで選択されているテキストを置き替えます
+### 11. 作成したリンクで選択されているテキストを置き替えます
 
 ```typescript:src/extension.ts
 const editor = vscode.window.activeTextEditor;
