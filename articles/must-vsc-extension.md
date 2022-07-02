@@ -1,8 +1,8 @@
 ---
-title: "マークアップ言語のリンクを作成するVSCodeの拡張機能を開発してみた"
+title: "マークアップ言語のリンクを作成するVSCodeの拡張機能をTypeScriptで開発してみた"
 emoji: "🔥"
 type: "tech" # tech: 技術記事 / idea: アイデア
-topics: [VSCode, Markdown]
+topics: [VSCode, Markdown, TypeScript]
 published: true
 ---
 
