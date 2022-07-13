@@ -18,6 +18,6 @@
   },
   "homepage": "https://github.com/kubotama/zenn#readme",
   "devDependencies": {
-    "zenn-cli": "^0.1.114"
+    "zenn-cli": "^0.1.115"
   }
 }
