@@ -130,3 +130,11 @@ effectsProfileId は以下のような値を設定するようです。
 #### pitch
 
 pitch は-20 から 20 の値を設定します。音声の高さを設定しています。
+
+## 追記
+
+Text-to-Speech の Rest API のドキュメント([Method: text.synthesize  |  Cloud Text-to-Speech Documentation](https://cloud.google.com/text-to-speech/docs/reference/rest/v1/text/synthesize#SynthesisInput))や RPC のドキュメント([Package google.cloud.texttospeech.v1  |  Cloud Text-to-Speech Documentation](https://cloud.google.com/text-to-speech/docs/reference/rpc/google.cloud.texttospeech.v1#google.cloud.texttospeech.v1.AudioConfig))には、クライアントライブラリのドキュメントでは説明されていない volumeGaibDb と sampleRateHertz の説明がありました。
+
+それによると volumeGainDb は音量を設定します。有効な値の範囲は-96.0 から 16.0 の間で、-6.0 ごとに音量は半分に、+6.0 ごとに 2 倍になります。+10 を超える値を設定しないことを強く推奨しています。
+
+sampleRateHertz は音声のサンプリング周波数を指定します。ただし、具体的な例はありません。
